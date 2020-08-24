@@ -3,7 +3,8 @@ set -e
 
 if [ "$VCS" = git ]; then
 	dir=.git
-	file=.gitignore
+	# Currently hardcoding the location as some of the current exclusion rules below are /etc specific.
+	file=/etc/.gitignore
 elif [ "$VCS" = hg ]; then
 	dir=.hg
 	file=.hgignore
@@ -33,6 +34,8 @@ comment() {
 	echo "# $comment" >>"$file"
 }
 
+# TODO check: maybe receive a parameter for the "ignore" function indicating the paths for which the ignore applies, e.g. /etc, / (specially "/*") or something to indicate that exclusion rules are global (where these exclusion rules should be put in the .gitignore at the root of the Git repository, wherever it is) and with these an specific .gitignore is created in each one of these directories. Initially these .gitignore files could be simply created in all of these folders and later, maybe they could be created only if these folders are in the scope of the current versioning (e.g. if we are versioning only /etc the /.gitignore should not be created) and are not excluded.
+# TODO check: take into account that /.gitignore might already exist and it might already contain "/*", so confirm if this could generate any problem.
 ignore() {
 	glob="$1"
 	
