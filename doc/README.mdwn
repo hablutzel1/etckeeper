@@ -11,6 +11,15 @@ permissions of `/etc/shadow`.
 It's quite modular and configurable, while also being simple to use if you
 understand the basics of working with version control.
 
+## About this fork
+
+This forks aims to support to keep (selected paths of) the entire filesystem under version control for those scenarios where configuration files (or other things) are outside `/etc`, e.g. a manual WildFly installation where the configuration files are in `/opt/wildfly/standalone/configuration`. Now, even when in most cases it should be possible to move configuration files to `/etc` to keep them under version control there, it is useful to have the flexibility to keep under version control things outside `/etc`.
+
+### TODOS
+
+- Explore the most correct correct way of forking this project. See https://etckeeper.branchable.com/ikiwiki.cgi?do=branchable on the details. Maybe create a branch there called "versioning_the_entire_filesystem".
+- Check all the branches of https://git.joeyh.name/index.cgi/etckeeper.git: `debian`, `master` and `setup`.
+- To allow `ETCKEEPER_DIR` to be configured manually before the repository initialization (e.g. to set it to "/"), look for a way to (possibly optionally) disable the automatic repository initialization performed after installing the `etckeeper` package.
 
 ## Security warnings
 

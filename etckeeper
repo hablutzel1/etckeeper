@@ -2,6 +2,7 @@
 set -e
 
 if [ -z "$ETCKEEPER_CONF_DIR" ]; then
+  # TODO confirm if this is the appropriate place for configurations of a fork... or should they go under /usr/local/etc? and in that case, evaluate to put everything in the appropriate locations under /usr/local. Anyway, considering that my fork would produce a .deb package, maybe it suffices with assigning it an appropriate name/version that reflects that it is a fork and use the standard locations.
 	ETCKEEPER_CONF_DIR=/etc/etckeeper
 fi
 
