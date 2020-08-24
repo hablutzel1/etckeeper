@@ -12,23 +12,20 @@ filter_ignore() {
 	esac
 
 	if [ -n "$ignorefile" ] && [ -e "$ignorefile" ]; then
-		listfile="$( mktemp -t etckeeper-$VCS.XXXXXXXXXX )"
 		case "$VCS" in
 			darcs)
+		    listfile="$( mktemp -t etckeeper-$VCS.XXXXXXXXXX )"
 				grep -v '^[[:space:]]*\(#\|$\)' "$ignorefile" > "$listfile" || true
 				grep -Evf "$listfile"
-				;;
+		    rm -f "$listfile"
+		    unset listfile
+		    ;;
 			git)
-				(git ls-files -oi --exclude-standard; git ls-files -oi --exclude-standard --directory) | sort | uniq > "$listfile" || true
-				if [ -s "$listfile" ]; then
-					sed 's/^\.\///' | grep -xFvf "$listfile"
-				else
-					cat -
-				fi
-				;;
+			  # TODO compare in detail the changes with the previous implementation for this, for example it was making a call to "sort", but why?, check the history for the previous code to understand it very well. Get sure to check in detail all the code being replaced.
+        # TODO check from which Git version is "git check-ignore" available. If its existence is not guaranteed, look for some method to emulate it (see https://stackoverflow.com/a/24621695/320594) or maybe copy its official implementation. But maybe this can be managed by simply specifying the minimum version of Git expected, for example, when defining/assembling the .deb package?.
+        git check-ignore -nv --stdin | sed "s/^::\t//;t;d"
+        ;;
 		esac
-		rm -f "$listfile"
-		unset listfile
 	else
 		cat -
 	fi
@@ -40,6 +37,7 @@ shellquote() {
 }
 
 generate_metadata() {
+  # TODO improve the performance for this function, maybe by introducing some type of hierarchical processing of the excluded paths, so, for example, if a given folder (e.g. foo/) is excluded, no path below it (e.g. foo/bar/zas.txt) is even processed.
 	# This function generates the script commands to fix any file
 	# ownerships that aren't owner=root, group=root, as well as to 
 	# store the permissions of files.
@@ -54,7 +52,8 @@ generate_metadata() {
 	# (Note that when using this, the find expression must end with 
 	# -print or -exec, else the excluded directories will actually be
 	# printed!)
-	NOVCS='. -path ./.git -prune -o -path ./.bzr -prune -o -path ./.hg -prune -o -path ./_darcs -prune -o'
+	# Currently we are excluding all the .git directories found, e.g. when both / and /etc are separate Git repositories. TODO evaluate to do the same for the all the other VCS.
+	NOVCS='. -name .git -prune -o -path ./.bzr -prune -o -path ./.hg -prune -o -path ./_darcs -prune -o'
 
 	# Keep the sort order the same at all times.
 	LC_COLLATE=C
@@ -64,8 +63,9 @@ generate_metadata() {
 	if [ "$VCS" = git ] || [ "$VCS" = hg ]; then
 		# These version control systems do not track directories,
 		# so empty directories must be stored specially.
+		# TODO check if the usage of "filter_ignore" here is not breaking compatibility with Mercurial.
 		find $NOVCS -type d -empty -print |
-			sort | shellquote | sed -e "s/^/mkdir -p /"
+			filter_ignore | sort | shellquote | sed -e "s/^/mkdir -p /"
 	fi
 
 	if [ "$VCS" = darcs ]; then
@@ -79,7 +79,7 @@ generate_metadata() {
  
 	# Store things that don't have the default user or group.
 	# Store all file modes, in case the user has an unusual umask.
-	find $NOVCS \( -type f -or -type d \) -print | filter_ignore | sort | maybe_chmod_chown
+	find $NOVCS \( -type f -or -type d \) -print | filter_ignore | sed 's/^\.\///' | sort | maybe_chmod_chown
 
 	# We don't handle xattrs.
 	# Maybe check for getfattr/setfattr and use them if they're available?
