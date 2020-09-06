@@ -13,7 +13,7 @@ elif [ "$VCS" = hg ]; then
 	hardlinks=$(find . -type f ! -links 1 -exec hg status {} \; | exclude_internal ) || true
 elif [ "$VCS" = git ]; then
 	special=$(find . ! -type d ! -type f ! -type l -exec git ls-files --exclude-standard --cached --others {} + | exclude_internal) || true
-	# FIXME the following has been observed producing errors like the following: "find: ‘./proc/30264/task/30264/fdinfo/6’: No such file or directory". Understand this error and then maybe avoid searching at all in ignored paths. Maybe we could manage to get Git produce a list of all the files subject to versioning and then we could check for hardlinks there.
+	# FIXME the following has been observed producing errors like the following: "find: ‘./proc/30264/task/30264/fdinfo/6’: No such file or directory". Understand this error and then maybe avoid searching at all in ignored paths. Maybe we could manage to get Git produce a list of all the files subject to versioning and then we could check for hardlinks there. Something like this seems to be the answer: (git ls-files; git ls-files -o --exclude-standard --directory). Finally, consider that the same should maybe be done to improve the performance of other operations like the ones in 30store-metadata.
 	hardlinks=$(find . -type f ! -links 1 -exec git ls-files --exclude-standard --cached --others {} + | exclude_internal) || true
 else
 	special=""

@@ -53,7 +53,14 @@ generate_metadata() {
 	# -print or -exec, else the excluded directories will actually be
 	# printed!)
 	# Currently we are excluding all the .git directories found, e.g. when both / and /etc are separate Git repositories. TODO evaluate to do the same for the all the other VCS.
-	NOVCS='. -name .git -prune -o -path ./.bzr -prune -o -path ./.hg -prune -o -path ./_darcs -prune -o'
+	EXCLUSIONS='. -name .git -prune -o -path ./.bzr -prune -o -path ./.hg -prune -o -path ./_darcs -prune -o'
+
+  if [ "$VCS" = git ]; then
+    if [ -e ".gitmodules" ]; then
+      # Excluding submodules from the search as paths below them will make "git check-ignore" fail. TODO check if there is anyway to make "git check-ignore" to ignore these errors.
+      EXCLUSIONS="$EXCLUSIONS $(git config --file .gitmodules --get-regexp path | awk '{ printf "-path ./%s -prune -o ", $2 }')"
+    fi
+  fi
 
 	# Keep the sort order the same at all times.
 	LC_COLLATE=C
@@ -64,14 +71,14 @@ generate_metadata() {
 		# These version control systems do not track directories,
 		# so empty directories must be stored specially.
 		# TODO check if the usage of "filter_ignore" here is not breaking compatibility with Mercurial.
-		find $NOVCS -type d -empty -print |
+		find $EXCLUSIONS -type d -empty -print |
 			filter_ignore | sort | shellquote | sed -e "s/^/mkdir -p /"
 	fi
 
 	if [ "$VCS" = darcs ]; then
 		# This version control system does not track symlinks,
 		# so they must be stored specially.
-		find $NOVCS -type l -print | sort | filter_ignore | while read link; do
+		find $EXCLUSIONS -type l -print | sort | filter_ignore | while read link; do
 			dest=$( readlink "$link" )
 			printf "ln -sf '%s' '%s'\n" "$(echo "$dest" | shellquote)" "$(echo "$link" | shellquote)"
 		done
@@ -79,7 +86,7 @@ generate_metadata() {
  
 	# Store things that don't have the default user or group.
 	# Store all file modes, in case the user has an unusual umask.
-	find $NOVCS \( -type f -or -type d \) -print | filter_ignore | sed 's/^\.\///' | sort | maybe_chmod_chown
+	find $EXCLUSIONS \( -type f -or -type d \) -print | filter_ignore | sed 's/^\.\///' | sort | maybe_chmod_chown
 
 	# We don't handle xattrs.
 	# Maybe check for getfattr/setfattr and use them if they're available?
